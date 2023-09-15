@@ -1,0 +1,35 @@
+name: getup
+on:
+  schedule:
+    - cron:  '0 14 * * *'
+  workflow_dispatch:
+  
+jobs:
+  getup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check
+        run: |
+         UPSTREAM=$(curl -IkLs -o /tmp/NUL -w %{url_effective} ${{ secrets.VERSION }} | grep -o "[^/]*$") 
+         CURRENT=v1.8.4
+         if [[ ${CURRENT} == ${UPSTREAM} ]]; 
+         then exit 0;
+         else
+           rm -rf *
+           mkdir -p .github/workflows
+           wget -qO .github/workflows/getup.yml https://github.com/${{ github.repository }}/raw/master/.github/workflows/getup.yml &> /dev/null
+           wget -qO .github/workflows/release.yml https://github.com/${{ github.repository }}/raw/master/.github/workflows/release.yml &> /dev/null
+           git ls-remote --tag --sort=-v:refname https://github.com/${{ secrets.REPOSITORY }} | head -1 | cut -f 2 | grep -o "[^/]*$" | sed -e "s/.*/         CURRENT=&/" | sed -i '14r/dev/stdin' .github/workflows/getup.yml && sed -i '14d' .github/workflows/getup.yml
+           git config --global init.defaultBranch master
+           git init
+           git add .
+           git config user.name jaugh
+           git config user.email 145081107+jaugh@users.noreply.github.com
+           git commit -m "${UPSTREAM}"
+           git remote add origin https://${{ github.actor }}:${{ secrets.TOKEN }}@github.com/${{ github.repository }}
+           git tag "${UPSTREAM}"
+           git push origin master --force
+           git push origin "${UPSTREAM}" --force;
+          fi 
+          
+          
